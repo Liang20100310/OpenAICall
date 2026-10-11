@@ -1,0 +1,22 @@
+# ============================================================================
+# FPGA 电话中继上位机 —— Python 依赖
+# 核心运行只需 pyserial + PyYAML；其余均为可选增强（缺失时代码给出明确提示）
+# ============================================================================
+
+# ---- 必需 ----
+pyserial>=3.5               # 真实串口访问（模拟器自测无需）
+PyYAML>=6.0                 # 解析 config.yaml
+
+# ---- 可选：STT 本地推理 ----
+# faster-whisper>=1.0        # 本地 Whisper（含 numpy / ctranslate2）
+
+# ---- 可选：TTS ----
+# edge-tts>=6.1              # 微软 Edge TTS（另需系统安装 ffmpeg）
+# openai>=1.0                # 仅当你想用官方 SDK 时；本项目自带标准库 HTTP 实现
+
+# ---- 可选：HTTP 服务（缺省自动回退纯标准库 http.server）----
+# fastapi>=0.110
+# uvicorn>=0.29
+
+# ---- 可选：Asterisk SIP 对接（docs/INTERFACE_SPEC.md §8，后续扩展）----
+# pjsua2 / aiosip

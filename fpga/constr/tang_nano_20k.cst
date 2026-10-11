@@ -1,0 +1,109 @@
+// =====================================================================
+// tang_nano_20k.cst : 高云 GW2AR-18C 引脚约束模板（Tang Nano 20K / 逻辑派 G1）
+// ---------------------------------------------------------------------
+// 说明：
+//   * 本文件为【模板】：带 (示例) 标注的引脚号是按 Tang Nano 20K 常见
+//     丝印给出的起点，上板前必须对照你的【底板原理图】逐一核对修改！
+//   * 高云 EDA 约束语法：IO_LOC "信号名" 引脚号; IO_PORT "信号名" 属性=值;
+//     属性常用：IO_TYPE（LVCMOS33/LVCMOS18）、PULL_MODE（UP/DOWN/NONE）、
+//     DRIVE（2/4/8/12/16/24mA）、SLEW_RATE（SLOW/FAST）
+//   * 电平域：FPGA Bank 全 3.3V（LVCMOS33）与 Codec/SLIC 数字口同域；
+//     若 SLIC 数字口为 1.8V，需加电平转换，FPGA 侧 IO_TYPE=LVCMOS18
+//   * 电话线侧的高压/模拟信号【不进 FPGA】，只在 SLIC/Codec 区域走线
+// =====================================================================
+
+// ---------------------- 时钟 / 复位 ----------------------
+IO_LOC "clk_27m" 4;                  // (示例) 板载 27MHz 晶振，Tang Nano 20K 常用 pin4
+IO_PORT "clk_27m" IO_TYPE=LVCMOS33 PULL_MODE=NONE;
+IO_LOC "rst_n" 3;                    // (示例) 复位按键（低有效），按实际按键脚改
+IO_PORT "rst_n" IO_TYPE=LVCMOS33 PULL_MODE=UP;
+
+// ---------------------- UART（接 PC / USB-UART 桥） ----------------------
+IO_LOC "uart_txd" 17;                // (示例) FPGA -> USB-UART RXD
+IO_PORT "uart_txd" IO_TYPE=LVCMOS33 DRIVE=8 SLEW_RATE=SLOW;
+IO_LOC "uart_rxd" 18;                // (示例) USB-UART TXD -> FPGA
+IO_PORT "uart_rxd" IO_TYPE=LVCMOS33 PULL_MODE=UP;
+
+// ---------------------- I2S（接 Codec：TLV320AIC3104 等） ----------------------
+// 4 根信号 + MCLK。BCLK/LRCLK/SDOUT 为 FPGA 输出（Master），SDIN 为输入。
+// 等长要求：BCLK/LRCLK/SDOUT/SDIN 组内等长 ±2.5mm（见 PCB 规格书 §4）
+IO_LOC "codec_mclk"  27;             // (示例) 12.288MHz 主时钟输出
+IO_PORT "codec_mclk"  IO_TYPE=LVCMOS33 DRIVE=8 SLEW_RATE=FAST;
+IO_LOC "codec_bclk"  28;             // (示例) 512kHz 位时钟
+IO_PORT "codec_bclk"  IO_TYPE=LVCMOS33 DRIVE=8 SLEW_RATE=FAST;
+IO_LOC "codec_lrclk" 29;             // (示例) 8kHz 帧时钟（WS）
+IO_PORT "codec_lrclk" IO_TYPE=LVCMOS33 DRIVE=8 SLEW_RATE=FAST;
+IO_LOC "codec_sdout" 30;             // (示例) FPGA -> Codec 数据
+IO_PORT "codec_sdout" IO_TYPE=LVCMOS33 DRIVE=8 SLEW_RATE=FAST;
+IO_LOC "codec_sdin"  31;             // (示例) Codec -> FPGA 数据
+IO_PORT "codec_sdin"  IO_TYPE=LVCMOS33 PULL_MODE=DOWN;
+
+// ---------------------- I2C（Codec 配置） ----------------------
+// 开漏 + 外部 4.7k 上拉到 3.3V；速率 100kHz（默认）/400kHz
+IO_LOC "i2c_scl" 32;                 // (示例)
+IO_PORT "i2c_scl" IO_TYPE=LVCMOS33 PULL_MODE=UP DRIVE=4 SLEW_RATE=SLOW;
+IO_LOC "i2c_sda" 33;                 // (示例)
+IO_PORT "i2c_sda" IO_TYPE=LVCMOS33 PULL_MODE=UP DRIVE=4 SLEW_RATE=SLOW;
+
+// ---------------------- SPI（SLIC 配置：Si32176 等） ----------------------
+// Mode 0，SCLK ≤ 20MHz（RTL 默认 ~1MHz）；CS 低有效
+IO_LOC "spi_sclk" 34;                // (示例)
+IO_PORT "spi_sclk" IO_TYPE=LVCMOS33 DRIVE=8 SLEW_RATE=SLOW;
+IO_LOC "spi_cs_n" 35;                // (示例)
+IO_PORT "spi_cs_n" IO_TYPE=LVCMOS33 DRIVE=8 PULL_MODE=UP;
+IO_LOC "spi_mosi" 36;                // (示例)
+IO_PORT "spi_mosi" IO_TYPE=LVCMOS33 DRIVE=8 SLEW_RATE=SLOW;
+IO_LOC "spi_miso" 37;                // (示例)
+IO_PORT "spi_miso" IO_TYPE=LVCMOS33 PULL_MODE=UP;
+
+// ---------------------- SLIC 控制/状态（2 通道） ----------------------
+IO_LOC "slic_ring[0]" 38;            // (示例) CH0 振铃使能（注意驱动能力/电平）
+IO_PORT "slic_ring[0]" IO_TYPE=LVCMOS33 DRIVE=8;
+IO_LOC "slic_ring[1]" 39;            // (示例) CH1 振铃使能
+IO_PORT "slic_ring[1]" IO_TYPE=LVCMOS33 DRIVE=8;
+IO_LOC "slic_hook[0]" 40;            // (示例) CH0 摘挂机检测输入
+IO_PORT "slic_hook[0]" IO_TYPE=LVCMOS33 PULL_MODE=UP;
+IO_LOC "slic_hook[1]" 41;            // (示例) CH1 摘挂机检测输入
+IO_PORT "slic_hook[1]" IO_TYPE=LVCMOS33 PULL_MODE=UP;
+IO_LOC "slic_int[0]"  42;            // (示例) CH0 SLIC 中断（预留）
+IO_PORT "slic_int[0]"  IO_TYPE=LVCMOS33 PULL_MODE=UP;
+IO_LOC "slic_int[1]"  43;            // (示例) CH1 SLIC 中断（预留）
+IO_PORT "slic_int[1]"  IO_TYPE=LVCMOS33 PULL_MODE=UP;
+
+// ---------------------- LED / 调试 ----------------------
+IO_LOC "led[0]" 15;                  // (示例) Tang Nano 20K LED
+IO_PORT "led[0]" IO_TYPE=LVCMOS33 DRIVE=4;
+IO_LOC "led[1]" 16;
+IO_PORT "led[1]" IO_TYPE=LVCMOS33 DRIVE=4;
+IO_LOC "led[2]" 19;
+IO_PORT "led[2]" IO_TYPE=LVCMOS33 DRIVE=4;
+IO_LOC "led[3]" 20;
+IO_PORT "led[3]" IO_TYPE=LVCMOS33 DRIVE=4;
+IO_LOC "led[4]" 21;
+IO_PORT "led[4]" IO_TYPE=LVCMOS33 DRIVE=4;
+IO_LOC "led[5]" 22;
+IO_PORT "led[5]" IO_TYPE=LVCMOS33 DRIVE=4;
+
+IO_LOC "dbg_frame_sync" 44;          // (示例) 测试点：8kHz 帧同步
+IO_PORT "dbg_frame_sync" IO_TYPE=LVCMOS33 DRIVE=8 SLEW_RATE=FAST;
+IO_LOC "dbg_dtmf_valid" 45;          // (示例) 测试点：DTMF 检出脉冲
+IO_PORT "dbg_dtmf_valid" IO_TYPE=LVCMOS33 DRIVE=8;
+
+// =====================================================================
+// 如何按实际 PCB / 开发板调整：
+// 1. 打开高云 EDA 的 FloorPlanner / 或查看板卡原理图 PDF，找到每个
+//    网络实际连接的 FPGA 球号（如 GW2AR-18C 封装为 QN88P：引脚号 = 球号）。
+// 2. 替换上面所有 (示例) 标注的引脚号；IO_TYPE 需与所在 Bank 电压一致
+//    （Tang Nano 20K 多数 Bank 为 3.3V；部分 Bank 1.8V，见原理图）。
+// 3. 驱动能力：时钟/数据线 DRIVE=8，慢信号 DRIVE=4；SLEW_RATE=FAST 仅
+//    用于时钟与音频数据，其余用 SLOW 以降低 EMI。
+// 4. 未使用的 IO 在高云 EDA 全局设置里选择 "Tristate / Pull-up"，
+//    不要悬空输入（避免动态功耗与噪声）。
+// 5. 高压侧（振铃 ~90Vrms、馈电 -48V）网络【严禁】引到 FPGA 引脚；
+//    它们只在 SLIC 区域走线并保持 ≥2mm 间距（见 pcb/PCB_DESIGN_SPEC.md）。
+// 6. 时序约束：高云 EDA 用 SDC（.sdc）约束主时钟：
+//      create_clock -name clk_27m -period 37.037 [get_ports clk_27m]
+//    I2S 时钟均由 clk_27m 分频产生，属生成时钟，EDA 自动推导；
+//    若用 PLL 产生 24.576MHz，另加：
+//      create_clock -name clk_audio -period 40.69 [get_pins u_pll/clkout]
+// =====================================================================

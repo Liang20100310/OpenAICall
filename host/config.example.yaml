@@ -1,0 +1,103 @@
+# ============================================================================
+# FPGA 电话中继 + AI 语音指挥系统 —— 上位机配置示例
+# 复制为 config.yaml 后按需修改；本文件所有键都有安全默认值。
+# ============================================================================
+
+# ---- 串口 / 桥服务（audio_bridge.bridge_service）--------------------------
+serial:
+  port: /dev/ttyUSB0          # 串口设备（Windows 如 COM3）
+  baudrate: 921600            # 协议默认 921600 8N1 无流控（可提速至 2M）
+
+bridge:
+  read_chunk: 4096            # 单次读串口字节数
+  read_timeout: 0.05          # 串口读超时（秒）
+  ul_jitter_frames: 3         # 上行抖动缓冲深度（帧；3 帧 = 60 ms）
+  dl_jitter_frames: 250       # 下行缓冲上限（帧；250 帧 = 5 s）
+  pace_dl: true               # 下行按 20 ms 节拍发送（false = 背靠背直发）
+  reg_timeout: 0.5            # REG_RD 等待 REG_VAL 超时（秒）
+  ping_timeout: 0.5           # PING 等待 PONG 超时（秒）
+
+# ---- 语音识别 STT（ai_pipeline.asr）--------------------------------------
+stt:
+  # type: faster_whisper | openai_api | simulated
+  type: openai_api
+  # --- faster_whisper（本地推理）---
+  model_size: small           # tiny / base / small / medium / large-v3
+  device: auto                # auto / cpu / cuda
+  compute_type: default       # default / int8 / float16 ...
+  beam_size: 1
+  # --- openai_api（HTTP，兼容 Whisper.cpp server / Copilot / OpenClaw 网关）---
+  base_url: https://api.openai.com/v1
+  api_key: "sk-REPLACE_ME"    # ★ 必填（openai_api 模式）
+  model: whisper-1
+  language: zh                # 语种（留空则自动检测）
+
+# ---- 大模型 LLM（ai_pipeline.llm）----------------------------------------
+llm:
+  # type: openai_api | offline
+  type: openai_api
+  base_url: https://api.openai.com/v1   # ★ 兼容端点地址（Copilot/OpenClaw 网关等）
+  api_key: "sk-REPLACE_ME"              # ★ 必填（openai_api 模式）
+  model: gpt-4o-mini
+  system_prompt: "你是一个电话语音助理，回答简洁口语化，适合语音播报。"
+  temperature: 0.7
+  max_tokens: 512
+  max_history: 20             # 保留的多轮对话消息条数
+  timeout: 60
+
+# ---- 语音合成 TTS（ai_pipeline.tts）--------------------------------------
+tts:
+  # type: edge | openai_api | tone
+  type: edge
+  # --- edge（微软 Edge 免费 TTS；需 pip install edge-tts + 系统 ffmpeg）---
+  voice: zh-CN-XiaoxiaoNeural
+  rate: "+0%"                 # 语速调节，如 "+10%"
+  volume: "+0%"
+  ffmpeg_bin: ffmpeg
+  # --- openai_api（HTTP）---
+  # base_url: https://api.openai.com/v1
+  # api_key: "sk-REPLACE_ME"
+  # model: tts-1
+  # voice: alloy
+  # speed: 1.0
+
+# ---- 通话控制（ai_pipeline.pipeline）-------------------------------------
+call:
+  channel: 0                  # 绑定的语音通道（CH0 / CH1）
+  silence_timeout_s: 15       # 静音超时挂断（秒）
+  max_call_s: 300             # 最大通话时长（秒）
+  barge_in: true              # 允许用户说话打断 TTS 播放
+  greeting: "你好，我是语音助理，请讲。"   # 应答后播报（留空不播）
+  dtmf_hangup_digit: "#"      # 按键挂断
+  dtmf_interrupt_digit: "*"   # 按键打断播报
+  min_utterance_ms: 300       # 最短话段（低于视为噪声）
+  preroll_frames: 5           # 话段预缓冲（帧；5 帧 = 100 ms）
+  auto_answer: true           # 摘机自动应答
+
+# ---- VAD 能量检测（ai_pipeline.vad）--------------------------------------
+vad:
+  threshold: 500              # 能量门限（RMS，16bit 域）
+  snr_ratio: 2.5              # 自适应模式下需高于噪声底限的倍数
+  adaptive: true              # 自适应跟踪噪声底限
+  noise_alpha: 0.95           # 噪声底限 EMA 系数
+  hangover_frames: 10         # 静音多久判定话段结束（10 帧 = 200 ms）
+  min_speech_frames: 2        # 最少语音帧数（防毛刺）
+
+# ---- HTTP / MCP 电发脑接口（mcp_http.server）-----------------------------
+mcp:
+  host: 127.0.0.1             # 监听地址（勿暴露公网；如需远程请配 auth_token）
+  port: 8765
+  auth_token: ""              # 非空则要求 Authorization: Bearer <token>
+  # 脚本白名单：只有这里登记的脚本才能被 /exec 与 execute_script 调用。
+  # argv 为参数向量（shell=False），支持 {param} 占位符；
+  # 参数值仅允许安全字符（字母/数字/中文/._-:=+/ 空格），禁止以 '-' 开头。
+  scripts:
+    device_reboot:
+      description: "重启指定电发脑设备"
+      argv: ["/usr/bin/python3", "/opt/relay/scripts/device_reboot.py", "--device", "{device_id}"]
+      timeout_s: 30
+      workdir: /opt/relay/scripts
+    scene_query:
+      description: "查询会议室场景状态"
+      argv: ["/opt/relay/scripts/scene_query", "{scene}"]
+      timeout_s: 10
